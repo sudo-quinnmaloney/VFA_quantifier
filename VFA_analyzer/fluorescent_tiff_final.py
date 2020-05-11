@@ -321,7 +321,7 @@ def findAverageLightIntensity(maskedImage, mask):
 
 
 
-def findAllCircleAveragesFor(imagePath, displayCirclesBool, count, folder):
+def findAllCircleAveragesFor(imagePath, displayCirclesBool, count):
     '''
 
     :param imagePath: the image path for the image that we are going to find all the averages for
@@ -355,8 +355,8 @@ def findAllCircleAveragesFor(imagePath, displayCirclesBool, count, folder):
     image = cv2.imread(imagePath)
     image = cropImage(image)
     aligned_image = alignImage(image, count)
-    label = 'spot' + str(folder) + '_' + str(count)
-
+    label = imagepath
+    
     # If we choose, the aligned image with labels will
     # pop up on screen to ensure that circles are on correct points
     if displayCirclesBool == True:
@@ -366,7 +366,7 @@ def findAllCircleAveragesFor(imagePath, displayCirclesBool, count, folder):
         cv2.destroyAllWindows()
     else:
         labeled_image = drawCirclesAndLabels(aligned_image, pointMap)
-        cv2.imwrite('/Users/quinnmaloney/Desktop/VFA_computer_vision-master/Processed/spot' + label + '.tif', labeled_image)
+        cv2.imwrite('/Users/quinnmaloney/Desktop/VFA_computer_vision-master/Processed/p_' + label + '.tif', labeled_image)
 
 
     #Prints the path and afterwards displays the average for each circle.
@@ -419,10 +419,10 @@ def averagesOfAllImages(displayCirclesBool = False):
         matrix = np.ones(13)
         for image in imageList:
             if i==0:
-                matrix = findAllCircleAveragesFor(mypath + image, displayCirclesBool,i,folder)
+                matrix = findAllCircleAveragesFor(mypath + image, displayCirclesBool,i)
                 i += 1
                 continue
-            matrix = np.vstack([matrix,findAllCircleAveragesFor(mypath + image, displayCirclesBool, i,folder)])
+            matrix = np.vstack([matrix,findAllCircleAveragesFor(mypath + image, displayCirclesBool, i)])
             i += 1
         with open(name + str(folder) + '.csv', 'w', newline='') as f:
             writer = csv.writer(f, delimiter = ',')
