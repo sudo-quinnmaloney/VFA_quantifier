@@ -277,7 +277,7 @@ def matchTemplate(image, template_dictionary, template):
 
 
     # Reads the template image from the alignment_templates directory
-    template = cv2.imread('alignment templates/' + template_dictionary[template], cv2.IMREAD_GRAYSCALE)
+    template = cv2.imread('alignment_templates/' + template_dictionary[template], cv2.IMREAD_GRAYSCALE)
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
 
