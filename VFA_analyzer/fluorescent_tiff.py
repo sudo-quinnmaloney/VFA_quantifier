@@ -149,7 +149,7 @@ def findAllCircleAveragesFor(imagePath, image_name, displayCirclesBool):
 
     for i in range(13):
         try:
-            pointMap[str(i+1)] = localizeWithCentroid(aligned_image, pointMap[str(i+1)],str(i+1), True)
+            pointMap[str(i+1)] = localizeWithCentroid(aligned_image, pointMap[str(i+1)],str(i+1), False)
         except:
             continue
 
