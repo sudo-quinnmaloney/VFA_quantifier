@@ -5,8 +5,8 @@ HOW THIS PROGRAM WORKS ON A HIGH LEVEL:
 of the alignment markers, it rotates the image and scales the image if found necessary.
 3. Then it shifts the image to where the first alignment marker, Alignment Marker A, is at the spot we
 need it to be now that the image is upright and oriented correctly. In our case, we want that alignment
-marker A to be at the point (591, 528). Once the image is aligned, we then know where the other points are
-because of the predefined grid that we made.
+marker A to be at the point (591, 528). Once the image is aligned, we isolate each immunoreaction spot. By calculating
+the centroid we can greatly increase the accuracy of our mask alignment.
 4. Once the image is aligned, we make a mask for each individual circle, and multiply (element-wise) it by the original
 image to create a new image that outside of the mask, it is completely black (matrix value of 0) We calculate
 the average light intensity by taking the sum of the image value (inside the mask, the values will remain
@@ -50,7 +50,7 @@ from helper_functions import create_circular_mask, \
     drawCirclesAndLabels, \
     cropImage,\
     alignImage, \
-    localizeCheck
+    localizeWithCentroid
 
 #This is for reading the images that are in the fluorescent/ directory
 from os import listdir, mkdir
@@ -147,9 +147,9 @@ def findAllCircleAveragesFor(imagePath, image_name, displayCirclesBool):
     ##So that we can create a new image name with _processed appended to it
     image_name = image_name.split('.')[0]
 
-    for i in range(12):
+    for i in range(13):
         try:
-            pointMap[str(i+1)] = localizeCheck(aligned_image, pointMap[str(i+1)],str(i+1))
+            pointMap[str(i+1)] = localizeWithCentroid(aligned_image, pointMap[str(i+1)],str(i+1), True)
         except:
             continue
 
