@@ -23,33 +23,77 @@ def cropImage(cropMe, y_min, y_max, x_min, x_max):
 
 
 
-def localizeCheck(rotatedandscaled, coords, spotnum):
+def localizeWithHough(rotatedandscaled, coords, spotnum):
+    '''This function corrects any small errors in circle placement  by using a hough transform to detect the actual center of a given spot. Then it updates the pointmap.'''
     image = cropImage(rotatedandscaled, coords[1] - 100, coords[1] + 100, coords[0] - 100, coords[0] + 100)
 
     #image = cv2.medianBlur(image,5)
     image = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+    
+    maxIntensity = 255.0 # depends on dtype of image data
+    x = np.arange(maxIntensity)
 
+    # Parameters for manipulating image data (phi=.8, theta=5 works quite well for the most recent images)
+    phi = .8
+    theta = 5
+
+    # Increase intensity such that
+    # dark pixels become much brighter,
+    # bright pixels become slightly bright
+    newImage0 = (maxIntensity/phi)*(image/(maxIntensity/theta))**0.5
+    newImage0 = np.array(newImage0,dtype=np.uint8)
+    
     #cv.HoughCircles (image, circles, method, dp, minDist, param1 = 100, param2 = 100, minRadius, maxRadius)
-    circles = cv2.HoughCircles(image, cv2.HOUGH_GRADIENT,4, 40, 70, 50, minRadius=65, maxRadius=80)
+    circles = cv2.HoughCircles(newImage0, cv2.HOUGH_GRADIENT,4, 20, 1000, 150, minRadius=67, maxRadius=78)
     
     circles = np.uint16(np.around(circles))
 
     for i in circles[0,:]:
         # draw the outer circle
-        cv2.circle(image,(i[0],i[1]),i[2],(0,255,0),2)
+        cv2.circle(newImage0,(i[0],i[1]),70,(0,255,0),2)
         # draw the center of the circle
-        cv2.circle(image,(i[0],i[1]),2,(0,0,255),3)
-    '''
-    cv2.imshow('detected circles',image)
+        cv2.circle(newImage0,(i[0],i[1]),2,(0,0,255),3)
+        break
+    
+
+    cv2.imshow('detected circles',newImage0)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-    cv2.imwrite('spot'+spotnum+'.jpg',image)
-    '''
+    cv2.imwrite('spot'+spotnum+'.jpg',newImage0)
+
     return (coords[0] + (circles[0][0][0] - 100), coords[1] + (circles[0][0][1] - 100))
     
+def localizeWithCentroid(rotatedandscaled, coords, spotnum, display_spots):
+    '''This function detects the actual center of a given spot by calculating the centroid of the pixel intensities. Then it updates the pointmap. This is much more effective than the Hough transform approach, but a bit slower.'''
+    image = cropImage(rotatedandscaled, coords[1] - 100, coords[1] + 100, coords[0] - 100, coords[0] + 100)
 
-
+    #image = cv2.medianBlur(image,5)
+    image = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+    avg = np.mean(np.ravel(image))
+    ret,thresh = cv2.threshold(image,avg,255,0)
+    M = cv2.moments(thresh)
+    
+    cX = int(M["m10"]/M["m00"])
+    cY = int(M["m01"]/M["m00"])
+    
+    if (display_spots == True):
+        maxIntensity = 255.0 # depends on dtype of image data
+        x = np.arange(maxIntensity)
+        phi = .8
+        theta = 5
+        newImage0 = (maxIntensity/phi)*(image/(maxIntensity/theta))**0.5
+        newImage0 = np.array(newImage0,dtype=np.uint8)
+        cv2.circle(newImage0,(cX,cY),70,(0,255,0),2)
+        cv2.circle(newImage0,(cX,cY),2,(0,0,255),3)
+        cv2.imshow('detected circles',newImage0)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        cv2.imwrite('spot'+spotnum+'.jpg',newImage0)
+        
+    return (coords[0] + (cX - 100), coords[1] + (cY - 100))
+    
+    
 def shiftBy(deltaX, deltaY, img):
     '''
     If delta values are negative, the translation matrix will move it the correct direction,
@@ -277,7 +321,7 @@ def matchTemplate(image, template_dictionary, template):
 
 
     # Reads the template image from the alignment_templates directory
-    template = cv2.imread('alignment_templates/' + template_dictionary[template], cv2.IMREAD_GRAYSCALE)
+    template = cv2.imread('alignment templates/' + template_dictionary[template], cv2.IMREAD_GRAYSCALE)
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
 
