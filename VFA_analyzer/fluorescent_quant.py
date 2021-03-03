@@ -3,7 +3,7 @@ import imageio
 import cv2
 import numpy as np
 import csv
-import time
+#import time
 from helper_functions_v2 import drawCirclesAndLabels, \
     alignImage, localizeWithCentroid, getStats
 
@@ -209,7 +209,7 @@ def averagesOfAllImages(displayCirclesBool = False):
     command = commands.index(stat_command)
     
     #testImage[:, :, 1]
-    start = time.time()
+    #start = time.time()
     ##### Writes data acquired from list to our csv file
     i = 0
     matrix = np.ones(13)
@@ -226,8 +226,8 @@ def averagesOfAllImages(displayCirclesBool = False):
         #matrix = np.vstack([matrix, np.ones(13)])
         writer = csv.writer(f, delimiter = ';')
         writer.writerows(matrix)
-    end = time.time()
-    print('Average runtime: ' + str((end - start)/len(imageList)))
+    #end = time.time()
+    #print('Average runtime: ' + str((end - start)/len(imageList)))
 
 
 def main():
