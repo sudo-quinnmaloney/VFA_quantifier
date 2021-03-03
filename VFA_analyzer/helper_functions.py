@@ -9,7 +9,7 @@ def localizeWithCentroid(rotatedandscaled, coords, spotnum, display_spots):
     rotatedandscaled = rotatedandscaled[coords[1]-100:coords[1]+100, coords[0]-100: coords[0]+100]
 
     #image = cv2.medianBlur(image,5)
-    rotatedandscaled = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+    rotatedandscaled = cv2.cvtColor(rotatedandscaled,cv2.COLOR_BGR2GRAY)
     avg = np.mean(np.ravel(rotatedandscaled))
     ret,thresh = cv2.threshold(rotatedandscaled,avg,255,0)
     M = cv2.moments(thresh)
