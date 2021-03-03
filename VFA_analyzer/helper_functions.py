@@ -4,74 +4,14 @@ import math
 import copy
 
 
-
-def cropImage(cropMe, y_min, y_max, x_min, x_max):
-    '''
-    This function simply crops the image that we are working with into the specified
-    dimensions that we have hard coded: 2540 x 2400 -> width x height
-    cropMe[1200:3600, 560:3100]
-    :param cropMe: image to be cropped
-    :param y_min: lower y bound (actually the top of the image, because Y axis is reversed)
-    :param y_max: upper y bound (actually the bottom of the image, because Y axis is reversed)
-    :param x_min: lower x bound
-    :param x_max: upper x bound
-    :return:
-     params of return statement are in [Y, X] cropping ranges
-    '''
-
-    return cropMe[y_min:y_max, x_min:x_max]
-
-
-
-def localizeWithHough(rotatedandscaled, coords, spotnum):
-    '''This function corrects any small errors in circle placement  by using a hough transform to detect the actual center of a given spot. Then it updates the pointmap.'''
-    image = cropImage(rotatedandscaled, coords[1] - 100, coords[1] + 100, coords[0] - 100, coords[0] + 100)
-
-    #image = cv2.medianBlur(image,5)
-    image = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
-    
-    maxIntensity = 255.0 # depends on dtype of image data
-    x = np.arange(maxIntensity)
-
-    # Parameters for manipulating image data (phi=.8, theta=5 works quite well for the most recent images)
-    phi = .8
-    theta = 5
-
-    # Increase intensity such that
-    # dark pixels become much brighter,
-    # bright pixels become slightly bright
-    newImage0 = (maxIntensity/phi)*(image/(maxIntensity/theta))**0.5
-    newImage0 = np.array(newImage0,dtype=np.uint8)
-    
-    #cv.HoughCircles (image, circles, method, dp, minDist, param1 = 100, param2 = 100, minRadius, maxRadius)
-    circles = cv2.HoughCircles(newImage0, cv2.HOUGH_GRADIENT,4, 20, 1000, 150, minRadius=67, maxRadius=78)
-    
-    circles = np.uint16(np.around(circles))
-
-    for i in circles[0,:]:
-        # draw the outer circle
-        cv2.circle(newImage0,(i[0],i[1]),70,(0,255,0),2)
-        # draw the center of the circle
-        cv2.circle(newImage0,(i[0],i[1]),2,(0,0,255),3)
-        break
-    
-
-    cv2.imshow('detected circles',newImage0)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-    cv2.imwrite('spot'+spotnum+'.jpg',newImage0)
-
-    return (coords[0] + (circles[0][0][0] - 100), coords[1] + (circles[0][0][1] - 100))
-    
 def localizeWithCentroid(rotatedandscaled, coords, spotnum, display_spots):
     '''This function detects the actual center of a given spot by calculating the centroid of the pixel intensities. Then it updates the pointmap. This is much more effective than the Hough transform approach, but a bit slower.'''
-    image = cropImage(rotatedandscaled, coords[1] - 100, coords[1] + 100, coords[0] - 100, coords[0] + 100)
+    rotatedandscaled = rotatedandscaled[coords[1]-100:coords[1]+100, coords[0]-100: coords[0]+100]
 
     #image = cv2.medianBlur(image,5)
-    image = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
-    avg = np.mean(np.ravel(image))
-    ret,thresh = cv2.threshold(image,avg,255,0)
+    rotatedandscaled = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+    avg = np.mean(np.ravel(rotatedandscaled))
+    ret,thresh = cv2.threshold(rotatedandscaled,avg,255,0)
     M = cv2.moments(thresh)
     
     cX = int(M["m10"]/M["m00"])
@@ -82,7 +22,7 @@ def localizeWithCentroid(rotatedandscaled, coords, spotnum, display_spots):
         x = np.arange(maxIntensity)
         phi = .8
         theta = 5
-        newImage0 = (maxIntensity/phi)*(image/(maxIntensity/theta))**0.5
+        newImage0 = (maxIntensity/phi)*(rotatedandscaled/(maxIntensity/theta))**0.5
         newImage0 = np.array(newImage0,dtype=np.uint8)
         cv2.circle(newImage0,(cX,cY),70,(0,255,0),2)
         cv2.circle(newImage0,(cX,cY),2,(0,0,255),3)
@@ -92,28 +32,6 @@ def localizeWithCentroid(rotatedandscaled, coords, spotnum, display_spots):
         cv2.imwrite('spot'+spotnum+'.jpg',newImage0)
         
     return (coords[0] + (cX - 100), coords[1] + (cY - 100))
-    
-    
-def shiftBy(deltaX, deltaY, img):
-    '''
-    If delta values are negative, the translation matrix will move it the correct direction,
-    so we dont have to worry about the negative values
-    :param deltaX: shift by this delta x
-    :param deltaY: shift by this delta y
-    :param img: image to shift
-    :return: shifted image
-    '''
-
-    num_rows, num_cols = img.shape[:2]
-    translation_matrix = np.float32([ [1,0,deltaX], [0,1,deltaY] ])
-    img_translation = cv2.warpAffine(img, translation_matrix, (num_cols, num_rows))
-
-    return img_translation
-
-
-
-
-
 
 def findScaleFactor(alignA, alignB, distance_to_compare_with):
     '''
@@ -277,22 +195,23 @@ def alignImage(image, image_name, correct_distance_from_A_to_B, correct_alignmar
 
 
     ########### Actually rotates image
-    rotated_image = rotateAndScale(image, avg_scale_factor, avg_angle)
+    image = rotateAndScale(image, avg_scale_factor, avg_angle)
 
 
 
 
     ############### Shifts the image
-    new_alignA = matchTemplate(rotated_image, template_dictionary, "template_A")
+    new_alignA = matchTemplate(image, template_dictionary, "template_A")
     alignAX = new_alignA[0]
     alignAY = new_alignA[1]
     shiftBy_x = correct_alignmarker_A_coordinates[0] - alignAX
     shiftBy_y = correct_alignmarker_A_coordinates[1] - alignAY
+    
+    num_rows, num_cols = image.shape[:2]
+    translation_matrix = np.float32([ [1,0,shiftBy_x], [0,1,shiftBy_y] ])
+    image = cv2.warpAffine(image, translation_matrix, (num_cols, num_rows))
 
-    shifted_and_rotated = shiftBy(shiftBy_x, shiftBy_y, rotated_image)
-
-
-    return shifted_and_rotated
+    return image
 
 
 
@@ -322,27 +241,27 @@ def matchTemplate(image, template_dictionary, template):
 
     # Reads the template image from the alignment_templates directory
     template = cv2.imread('alignment templates/' + template_dictionary[template], cv2.IMREAD_GRAYSCALE)
-    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
 
 
     ######### Partitioning of image
-    gray_width, gray_height = gray_image.shape[::-1]
+    gray_width, gray_height = image.shape[::-1]
     gray_half_width = gray_width//2 #Note the double '/' for making sure our result is an integer
 
     if partition == 'B':
         # We are going to look at the right partition
-        gray_image = gray_image[0:gray_height,gray_half_width:gray_width]
+        image = image[0:gray_height,gray_half_width:gray_width]
     elif partition == 'A':
         # We are going to look at the left partition
-        gray_image = gray_image[0:gray_height, 0:gray_half_width]
+        image = image[0:gray_height, 0:gray_half_width]
 
 
 
 
     ########## Actually completing template match
     w,h = template.shape[::-1]
-    result = cv2.matchTemplate(gray_image, template, cv2.TM_CCOEFF_NORMED)
+    result = cv2.matchTemplate(image, template, cv2.TM_CCOEFF_NORMED)
 
 
     ##########This section calculates the midpoint of the square that the template matched to
@@ -364,54 +283,21 @@ def matchTemplate(image, template_dictionary, template):
 
     return (midXPoint, midYPoint)
 
-
-
-
-
-
-def create_circular_mask(h, w, center=None, radius=None):
-    '''
-    **Note: height and width must be exactly the same as the image we are making a mask for
-     bc we multiply the matrices together in the end
-    :param h: height of the image we are creating a mask for
-    :param w: width of the image we are creating a mask for
-    :param center: The center point of the circle
-    :param radius: The specified radius that we choose: in our case, we are defaulting to 60px
-    :return:
-    '''
-
-    if center is None: # use the middle of the image
-        center = (int(w/2), int(h/2))
-    if radius is None: # use the smallest distance between the center and image walls
-        radius = min(center[0], center[1], w-center[0], h-center[1])
-
-    Y, X = np.ogrid[:h, :w]
-    dist_from_center = np.sqrt((X - center[0])**2 + (Y-center[1])**2)
-
-    mask = dist_from_center <= radius
-    return mask
-
-
-
-
-
-
-def findAverageLightIntensity(maskedImage, mask):
-
-    '''
-    :param maskedImage: This is the original image that has been multiplied with the mask
-    :param mask: This is the mask that was made to 'cut out' the
-    :return: returns the average, which is found to be the sum of the pixel values divided by the area of the mask
-    '''
-
-    sum_of_pixels = np.sum(maskedImage)
-    area = np.sum(mask)
-    return(sum_of_pixels/area)
-
-
-
-
-
+def getStats(image, r, center, command):
+    x, y = center[0], center[1]
+    thisSpot = [image[y][x]]
+    removed = 0
+    for xs in range(r):
+        for ys in range(r):
+            if (0 < xs**2 + ys**2 < r**2):
+                thisSpot.append(image[y + ys][x + xs])
+                thisSpot.append(image[y - ys][x - xs])
+                thisSpot.append(image[y + ys][x - xs])
+                thisSpot.append(image[y - ys][x + xs])
+    
+    options = { 0: np.std , 1: np.mean, 2: max, 3: min }
+    #options = [np.std(thisSpot), np.mean(thisSpot), max(thisSpot), min(thisSpot)]
+    return options[command](thisSpot)
 
 def drawCirclesAndLabels(already_aligned_image, pointMap, radius_to_draw):
     '''
