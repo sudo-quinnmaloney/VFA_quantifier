@@ -45,12 +45,10 @@ you should be able to change just these constants
 import cv2
 import numpy as np
 import csv
-from helper_functions import create_circular_mask, \
-    findAverageLightIntensity, \
-    drawCirclesAndLabels, \
-    cropImage,\
+import time
+from helper_functions_v2 import drawCirclesAndLabels, \
     alignImage, \
-    localizeWithCentroid
+    localizeWithCentroid, getStats
 
 #This is for reading the images that are in the fluorescent/ directory
 from os import listdir, mkdir
@@ -97,7 +95,7 @@ template_dictionary = {
 
 
 # CONSTANTS
-MASK_RADIUS = 70
+MASK_RADIUS = 60
 ALIGNMENT_MARKER_A_MAP_LOCATION = pointMap['A']
 ALIGNMENT_MARKER_B_MAP_LOCATION = pointMap['B']
 DISTANCE_FROM_A_TO_B = ALIGNMENT_MARKER_B_MAP_LOCATION[0] - ALIGNMENT_MARKER_A_MAP_LOCATION[0]
@@ -112,7 +110,7 @@ XMAX_BOUND = 3800
 
 
 
-def findAllCircleAveragesFor(imagePath, image_name, displayCirclesBool):
+def getCircleData(imagePath, image_name, displayCirclesBool, whichCommand):
     '''
     :param imagePath: the image path for the image that we are going to find all the averages for
     :param image_name: This is the name of the image that we are going to find all the averages for
@@ -141,7 +139,7 @@ def findAllCircleAveragesFor(imagePath, image_name, displayCirclesBool):
     #### Crops image and aligns it to our grid
     full_image_path = imagePath + image_name
     image = cv2.imread(full_image_path)
-    image = cropImage(image, YMIN_BOUND, YMAX_BOUND, XMIN_BOUND, XMAX_BOUND)
+    image = image[YMIN_BOUND: YMAX_BOUND, XMIN_BOUND: XMAX_BOUND]
     aligned_image = alignImage(image, image_name, DISTANCE_FROM_A_TO_B, ALIGNMENT_MARKER_A_MAP_LOCATION, template_dictionary)
 
     ##So that we can create a new image name with _processed appended to it
@@ -182,13 +180,11 @@ def findAllCircleAveragesFor(imagePath, image_name, displayCirclesBool):
         #We do not need to print the average intensity for the alignment markers
         if key not in ['A', 'B', 'C', 'D']:
 
-            radius_of_mask = MASK_RADIUS
-            centerPoint = value
-            mask = create_circular_mask(h, w, centerPoint, radius_of_mask)
-            maskedImage = np.multiply(aligned_image, mask)
+            #mask = create_circular_mask(h, w, MASK_RADIUS, value[0], value[1])
+            #maskedImage = np.multiply(aligned_image, mask)
 
-            averageIntensity = findAverageLightIntensity(maskedImage, mask)
-            output.append(averageIntensity)
+            #averageIntensity = findAverageLightIntensity(maskedImage, mask)
+            output.append(getStats(aligned_image, MASK_RADIUS, value, whichCommand))
 
 
 
@@ -220,51 +216,71 @@ def averagesOfAllImages(displayCirclesBool = False):
     :param displayCirclesBool:
     :return:
     '''
+    imageList = []
+    
+    while(1):
+        #### User specified test directory
+        test_directory_name = input('Enter directory to test, or \'quit\' to exit: ')
+        if test_directory_name == 'quit':
+            return
+        if test_directory_name[-1] != '/':
+            test_directory_name += '/'
+        test_directory_path= test_directory_name
 
 
-    #### User specified test directory
-    test_directory_name = input('Enter directory to test(must be inside of datasets directory, do not include path in name): ')
-    if test_directory_name[-1] != '/':
-        test_directory_name += '/'
-    test_directory_path= test_directory_name
-
-
-    ##Asserting that the directory input by user is valid and has images ending with .tif inside of it
-    assert(isdir(test_directory_path)), "Error: Invalid directory"
-    imageList = [f for f in listdir(test_directory_path) if (isfile(join(test_directory_path, f))) and (f.endswith('.jpg') or f.endswith('.jpeg'))]
-    assert (len(imageList) > 0), "Error: No jpg/jpeg images in this directory, please check the directory"
+        ##Asserting that the directory input by user is valid and has images ending with .tif inside of it
+        if(isdir(test_directory_path)):
+            imageList = [f for f in listdir(test_directory_path) if (isfile(join(test_directory_path, f))) and (f.endswith('.jpg') or f.endswith('.jpeg'))]
+            if (len(imageList) > 0):
+                break
+            else:
+                print("\tError: No jpg/jpeg images in this directory, please check the directory")
+        else:
+            print("\tError: Invalid directory")
 
 
     imageList = sorted(imageList)
     print(str(len(imageList)) + ' images imported...')
-
+    
+    commands = ['std','mean','max','min']
+    stat_command = ""
+    while (1):
+        stat_command = input('Enter desired metric (\'std\', \'mean\', \'max\',\'min\'): ').lower()
+        if stat_command in commands:
+            break;
+        else:
+            print('\tInvalid metric...')
+    command = commands.index(stat_command)
+    
     #testImage[:, :, 1]
-
+    start = time.time()
     ##### Writes data acquired from list to our csv file
     i = 0
     matrix = np.ones(13)
     for image in imageList:
         if i == 0:
-            matrix = [findAllCircleAveragesFor(test_directory_path, image, displayCirclesBool)]
+            matrix = [getCircleData(test_directory_path, image, displayCirclesBool, command)]
             i += 1
             continue
-        matrix = np.vstack([matrix,findAllCircleAveragesFor(test_directory_path, image, displayCirclesBool)])
+        matrix = np.vstack([matrix,getCircleData(test_directory_path, image, displayCirclesBool, command)])
         i += 1
     if not isdir(test_directory_path + 'csv_jpg/'):
         mkdir(test_directory_path + 'csv_jpg/')
-    with open(test_directory_path + 'csv_jpg/' +  'intensities.csv', 'w+', newline='') as f:
+    with open(test_directory_path + 'csv_jpg/' + stat_command + '.csv', 'w+', newline='') as f:
         #matrix = np.vstack([matrix, np.ones(13)])
         writer = csv.writer(f, delimiter = ';')
         writer.writerows(matrix)
-
+    end = time.time()
+    print('Average runtime: ' + str((end - start)/len(imageList)))
 
 
 def main():
-
+    
     #Change to true to display images with circles drawn on
     averagesOfAllImages(False)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+
 
 if __name__ == '__main__':
     main()
