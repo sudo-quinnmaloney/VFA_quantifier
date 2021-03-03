@@ -47,8 +47,7 @@ import numpy as np
 import csv
 import time
 from helper_functions_v2 import drawCirclesAndLabels, \
-    alignImage, \
-    localizeWithCentroid, getStats
+    alignImage, localizeWithCentroid, getStats
 
 #This is for reading the images that are in the fluorescent/ directory
 from os import listdir, mkdir
