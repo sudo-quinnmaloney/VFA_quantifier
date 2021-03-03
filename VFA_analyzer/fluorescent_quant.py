@@ -145,7 +145,7 @@ def getCircleData(imagePath, image_name, displayCirclesBool, whichCommand):
 
 
     #Prints the path for the image that was just processed
-    print("Finished Processing: " + full_image_path)
+    print("\tFinished Processing: " + full_image_path)
 
     return output
 
@@ -196,7 +196,7 @@ def averagesOfAllImages(displayCirclesBool = False):
 
 
     imageList = sorted(imageList)
-    print(str(len(imageList)) + ' images imported...')
+    print('\t' + str(len(imageList)) + ' images imported...')
     
     commands = ['std','mean','max','min']
     stat_command = ""
