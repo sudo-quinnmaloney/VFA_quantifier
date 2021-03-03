@@ -1,51 +1,9 @@
-'''
-HOW THIS PROGRAM WORKS ON A HIGH LEVEL:
-1. First it crops the image to our specified dimensions, to which right now it is set to 2540x2400 -> width x height
-2. Then it uses template matching in order to find the top two alignment markers, and using the points
-of the alignment markers, it rotates the image and scales the image if found necessary.
-3. Then it shifts the image to where the first alignment marker, Alignment Marker A, is at the spot we
-need it to be now that the image is upright and oriented correctly. In our case, we want that alignment
-marker A to be at the point (591, 528). Once the image is aligned, we isolate each immunoreaction spot. By calculating
-the centroid we can greatly increase the accuracy of our mask alignment.
-4. Once the image is aligned, we make a mask for each individual circle, and multiply (element-wise) it by the original
-image to create a new image that outside of the mask, it is completely black (matrix value of 0) We calculate
-the average light intensity by taking the sum of the image value (inside the mask, the values will remain
-their original values) divided by the sum of the mask
-(this is essentially just the area of the circle because inside the mask,
-there are only 1's and outside it there are only 0's)
-5. We repeat this process for every image in the directory the user specifies, which houses all
- our images that need analysis. As long as our directory specified is inside the datasets directory,
- it will work as expected
-
-
- VERY IMPORTANT NOTE: to change the map we have, and make
- the program still work, the only things that should be changed should be one of the following:
-
-    1. pointMap
-    2. template_dictionary
-    3. MASK_RADIUS
-    4. YMIN_BOUND
-    5. YMAX_BOUND
-    6. XMIN_BOUND
-    7. XMAX_BOUND
-
-By changing these values, we should be able to make our code work with any changes that we want to make.
-i.e. If you have a new image that you have to change the cropping to (maybe bc image is way larger or smaller)
-    or you want to change the map, changing the values described above should be the only changes
-    you make in order to make program still work
-
-However, if you change the image type (e.g. from tiff to jpg) you will need to
-change the code in the functions below
-
-There might be other corner cases where you have to change the code in the functions, but generally,
-you should be able to change just these constants
-
-'''
-
+import rawpy
+import imageio
 import cv2
 import numpy as np
 import csv
-#import time
+import time
 from helper_functions_v2 import drawCirclesAndLabels, \
     alignImage, localizeWithCentroid, getStats
 
@@ -119,31 +77,29 @@ def getCircleData(imagePath, image_name, displayCirclesBool, whichCommand):
 
         False: The images will be saved to a directory named "processed" inside
         the directory the user specified at the beginning
-
+    :param whichCommand: Indicates which statistic is being requested
 
     :return:
     '''
-
-
-
-
-    ##### This output array will be returned and will be a row in the csv file
+    
+    #This output array will be returned and will be a row in the csv file
     output = []
     output.append(image_name)
 
-
-
-
-
-    #### Crops image and aligns it to our grid
+    #Import (and convert from DNG if necessary)
     full_image_path = imagePath + image_name
-    image = cv2.imread(full_image_path)
+    
+    if (image_name.endswith('.dng')):
+        with rawpy.imread(full_image_path) as raw:
+            image = raw.postprocess()
+    else:
+        image = cv2.imread(full_image_path)
+        
+    #Crop and align
     image = image[YMIN_BOUND: YMAX_BOUND, XMIN_BOUND: XMAX_BOUND]
     aligned_image = alignImage(image, image_name, DISTANCE_FROM_A_TO_B, ALIGNMENT_MARKER_A_MAP_LOCATION, template_dictionary)
-
-    ##So that we can create a new image name with _processed appended to it
-    image_name = image_name.split('.')[0]
-
+    
+    #Improve localization
     for i in range(13):
         try:
             pointMap[str(i+1)] = localizeWithCentroid(aligned_image, pointMap[str(i+1)],str(i+1), False)
@@ -152,16 +108,17 @@ def getCircleData(imagePath, image_name, displayCirclesBool, whichCommand):
 
 
 
-    #### Either displays the result images on the screen or saves them to directory inside calling directory
+    #Display or save
+    image_name = image_name.split('.')[0]
     if displayCirclesBool == True:
         labeled_image = drawCirclesAndLabels(aligned_image, pointMap, MASK_RADIUS)
         cv2.imshow("Labeled Circles for " + image_name, labeled_image)
 
     else:
         labeled_image = drawCirclesAndLabels(aligned_image, pointMap, MASK_RADIUS)
-        if not isdir(imagePath + 'processed_jpg/'):
-            mkdir(imagePath + 'processed_jpg/')
-        cv2.imwrite(imagePath + 'processed_jpg/' + image_name + '_processed.jpg', labeled_image)
+        if not isdir(imagePath + 'processed_jpgs/'):
+            mkdir(imagePath + 'processed_jpgs/')
+        cv2.imwrite(imagePath + 'processed_jpgs/' + image_name + '_processed.jpg', labeled_image)
 
 
 
@@ -229,11 +186,11 @@ def averagesOfAllImages(displayCirclesBool = False):
 
         ##Asserting that the directory input by user is valid and has images ending with .tif inside of it
         if(isdir(test_directory_path)):
-            imageList = [f for f in listdir(test_directory_path) if (isfile(join(test_directory_path, f))) and (f.endswith('.jpg') or f.endswith('.jpeg'))]
+            imageList = [f for f in listdir(test_directory_path) if (isfile(join(test_directory_path, f))) and (f.endswith('.jpg') or f.endswith('.jpeg') or f.endswith('.dng') or f.endswith('.tiff'))]
             if (len(imageList) > 0):
                 break
             else:
-                print("\tError: No jpg/jpeg images in this directory, please check the directory")
+                print("\tError: No images in this directory, please check the directory")
         else:
             print("\tError: Invalid directory")
 
@@ -252,7 +209,7 @@ def averagesOfAllImages(displayCirclesBool = False):
     command = commands.index(stat_command)
     
     #testImage[:, :, 1]
-    #start = time.time()
+    start = time.time()
     ##### Writes data acquired from list to our csv file
     i = 0
     matrix = np.ones(13)
@@ -263,14 +220,14 @@ def averagesOfAllImages(displayCirclesBool = False):
             continue
         matrix = np.vstack([matrix,getCircleData(test_directory_path, image, displayCirclesBool, command)])
         i += 1
-    if not isdir(test_directory_path + 'csv_jpg/'):
-        mkdir(test_directory_path + 'csv_jpg/')
-    with open(test_directory_path + 'csv_jpg/' + stat_command + '.csv', 'w+', newline='') as f:
+    if not isdir(test_directory_path + 'csv/'):
+        mkdir(test_directory_path + 'csv/')
+    with open(test_directory_path + 'csv/' + stat_command + '.csv', 'w+', newline='') as f:
         #matrix = np.vstack([matrix, np.ones(13)])
         writer = csv.writer(f, delimiter = ';')
         writer.writerows(matrix)
-    #end = time.time()
-    #print('Average runtime: ' + str((end - start)/len(imageList)))
+    end = time.time()
+    print('Average runtime: ' + str((end - start)/len(imageList)))
 
 
 def main():
