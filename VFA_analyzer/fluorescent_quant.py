@@ -3,7 +3,7 @@ import imageio
 import cv2
 import numpy as np
 import csv
-#import time
+import time
 from helper_functions_v2 import drawCirclesAndLabels, \
     alignImage, localizeWithCentroid, getStats
 
@@ -140,7 +140,7 @@ def getCircleData(imagePath, image_name, displayCirclesBool, whichCommand):
             #maskedImage = np.multiply(aligned_image, mask)
 
             #averageIntensity = findAverageLightIntensity(maskedImage, mask)
-            output.append(getStats(aligned_image, MASK_RADIUS, value, whichCommand))
+            output.append(getStats(aligned_image, MASK_RADIUS, value, whichCommand, True))
 
 
 
@@ -151,7 +151,7 @@ def getCircleData(imagePath, image_name, displayCirclesBool, whichCommand):
 
 
 
-def averagesOfAllImages(displayCirclesBool = False):
+def averagesOfAllImages(displayCirclesBool = False, test_directory_name = ""):
     '''
 
     This function simply runs the findAllCircleAveragesFor every image in our list.
@@ -173,26 +173,21 @@ def averagesOfAllImages(displayCirclesBool = False):
     :return:
     '''
     imageList = []
-    
-    while(1):
-        #### User specified test directory
-        test_directory_name = input('Enter directory to test, or \'quit\' to exit: ')
-        if test_directory_name == 'quit':
-            return
-        if test_directory_name[-1] != '/':
-            test_directory_name += '/'
+
+    if test_directory_name[-1] != '/':
+        test_directory_name += '/'
         test_directory_path= test_directory_name
 
 
-        ##Asserting that the directory input by user is valid and has images ending with .tif inside of it
-        if(isdir(test_directory_path)):
-            imageList = [f for f in listdir(test_directory_path) if (isfile(join(test_directory_path, f))) and (f.endswith('.jpg') or f.endswith('.jpeg') or f.endswith('.dng') or f.endswith('.tiff'))]
-            if (len(imageList) > 0):
-                break
-            else:
-                print("\tError: No images in this directory, please check the directory")
-        else:
-            print("\tError: Invalid directory")
+    ##Asserting that the directory input by user is valid and has images ending with .tif inside of it
+    if(isdir(test_directory_path)):
+        imageList = [f for f in listdir(test_directory_path) if (isfile(join(test_directory_path, f))) and (f.endswith('.jpg') or f.endswith('.jpeg') or f.endswith('.dng') or f.endswith('.tiff'))]
+        if (len(imageList) == 0):
+            print("\tError: No images here, please check the directory")
+            return
+    else:
+        print("\tError: Invalid directory")
+        return
 
 
     imageList = sorted(imageList)
@@ -209,7 +204,7 @@ def averagesOfAllImages(displayCirclesBool = False):
     command = commands.index(stat_command)
     
     #testImage[:, :, 1]
-    #start = time.time()
+    start = time.time()
     ##### Writes data acquired from list to our csv file
     i = 0
     matrix = np.ones(13)
@@ -226,17 +221,19 @@ def averagesOfAllImages(displayCirclesBool = False):
         #matrix = np.vstack([matrix, np.ones(13)])
         writer = csv.writer(f, delimiter = ';')
         writer.writerows(matrix)
-    #end = time.time()
-    #print('Average runtime: ' + str((end - start)/len(imageList)))
+    end = time.time()
+    print('Average runtime: ' + str((end - start)/len(imageList)))
 
 
 def main():
-    
-    #Change to true to display images with circles drawn on
-    averagesOfAllImages(False)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
+    while(1):
+        folder_name = input('Enter directory to test, or \'quit\' to exit: ')
+        if folder_name == 'quit':
+            return
+        #Change to true to display images with circles drawn on
+        averagesOfAllImages(False, folder_name)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
 if __name__ == '__main__':
     main()
