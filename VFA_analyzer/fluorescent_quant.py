@@ -91,7 +91,7 @@ def getCircleData(imagePath, image_name, displayCirclesBool, whichCommand):
     
     if (image_name.endswith('.dng')):
         with rawpy.imread(full_image_path) as raw:
-            image = raw.postprocess()
+            image = np.flip(raw.postprocess(),axis=2)
     else:
         image = cv2.imread(full_image_path)
         
@@ -140,7 +140,7 @@ def getCircleData(imagePath, image_name, displayCirclesBool, whichCommand):
             #maskedImage = np.multiply(aligned_image, mask)
 
             #averageIntensity = findAverageLightIntensity(maskedImage, mask)
-            output.append(getStats(aligned_image, MASK_RADIUS, value, whichCommand, True))
+            output.append(getStats(aligned_image, MASK_RADIUS, value, whichCommand, False))
 
 
 
