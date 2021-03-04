@@ -283,7 +283,7 @@ def matchTemplate(image, template_dictionary, template):
 
     return (midXPoint, midYPoint)
 
-def getStats(image, r, center, command):
+def getStats(image, r, center, command, visualize):
     x, y = center[0], center[1]
     thisSpot = [image[y][x]]
     removed = 0
@@ -294,7 +294,16 @@ def getStats(image, r, center, command):
                 thisSpot.append(image[y - ys][x - xs])
                 thisSpot.append(image[y + ys][x - xs])
                 thisSpot.append(image[y - ys][x + xs])
-    
+                if (visualize):
+                    image[y+ys][x+xs] = 255
+                    image[y-ys][x+xs] = 255
+                    image[y+ys][x-xs] = 255
+                    image[y-ys][x-xs] = 255
+    if (visualize):
+        cv2.imshow('spot mask', image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        
     options = { 0: np.std , 1: np.mean, 2: max, 3: min }
     #options = [np.std(thisSpot), np.mean(thisSpot), max(thisSpot), min(thisSpot)]
     return options[command](thisSpot)
@@ -331,4 +340,3 @@ def drawCirclesAndLabels(already_aligned_image, pointMap, radius_to_draw):
         copyImage = cv2.putText(copyImage, key, value, font,
                             fontScale, color, thickness, cv2.LINE_AA)
     return copyImage
- 
