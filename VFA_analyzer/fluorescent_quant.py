@@ -20,7 +20,7 @@ DCOORD = (2340, 2442)
 
 
 #### THIS PART IS ESSENTIAL, THIS IS OUR SPOT MAP THAT OUR ENTIRE PROGRAM IS BASED ON
-pointMap = {
+pointMapInit = {
     'A': (1012, 1112),
     'B': (2340, 1112),
     'C': (1012, 2442),
@@ -53,8 +53,8 @@ template_dictionary = {
 
 # CONSTANTS
 MASK_RADIUS = 60
-ALIGNMENT_MARKER_A_MAP_LOCATION = pointMap['A']
-ALIGNMENT_MARKER_B_MAP_LOCATION = pointMap['B']
+ALIGNMENT_MARKER_A_MAP_LOCATION = pointMapInit['A']
+ALIGNMENT_MARKER_B_MAP_LOCATION = pointMapInit['B']
 DISTANCE_FROM_A_TO_B = ALIGNMENT_MARKER_B_MAP_LOCATION[0] - ALIGNMENT_MARKER_A_MAP_LOCATION[0]
 
 #CROP IMAGE DIMENSIONS CONSTANTS
@@ -100,11 +100,7 @@ def getCircleData(imagePath, image_name, displayCirclesBool, whichCommand):
     aligned_image = alignImage(image, image_name, DISTANCE_FROM_A_TO_B, ALIGNMENT_MARKER_A_MAP_LOCATION, template_dictionary)
     
     #Improve localization
-    for i in range(13):
-        try:
-            pointMap[str(i+1)] = localizeWithCentroid(aligned_image, pointMap[str(i+1)],str(i+1), False)
-        except:
-            continue
+    pointMap = localizeWithCentroid(aligned_image, pointMapInit, False)
 
 
 
