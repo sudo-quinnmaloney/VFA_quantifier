@@ -4,34 +4,47 @@ import math
 import copy
 
 
-def localizeWithCentroid(rotatedandscaled, coords, spotnum, display_spots):
+def localizeWithCentroid(rotatedandscaled, coord_dict, display_spots):
     '''This function detects the actual center of a given spot by calculating the centroid of the pixel intensities. Then it updates the pointmap. This is much more effective than the Hough transform approach, but a bit slower.'''
-    rotatedandscaled = rotatedandscaled[coords[1]-100:coords[1]+100, coords[0]-100: coords[0]+100]
+    checkLocalization = False
+    for i in range(13):
+        try:
+            spotnum = i+1
+            coords = coord_dict[str(spotnum)]
+            
+            cropped = rotatedandscaled[coords[1]-100:coords[1]+100, coords[0]-100: coords[0]+100]
 
-    #image = cv2.medianBlur(image,5)
-    rotatedandscaled = cv2.cvtColor(rotatedandscaled,cv2.COLOR_BGR2GRAY)
-    avg = np.mean(np.ravel(rotatedandscaled))
-    ret,thresh = cv2.threshold(rotatedandscaled,avg,255,0)
-    M = cv2.moments(thresh)
-    
-    cX = int(M["m10"]/M["m00"])
-    cY = int(M["m01"]/M["m00"])
-    
-    if (display_spots == True):
-        maxIntensity = 255.0 # depends on dtype of image data
-        x = np.arange(maxIntensity)
-        phi = .8
-        theta = 5
-        newImage0 = (maxIntensity/phi)*(rotatedandscaled/(maxIntensity/theta))**0.5
-        newImage0 = np.array(newImage0,dtype=np.uint8)
-        cv2.circle(newImage0,(cX,cY),70,(0,255,0),2)
-        cv2.circle(newImage0,(cX,cY),2,(0,0,255),3)
-        cv2.imshow('detected circles',newImage0)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-        cv2.imwrite('spot'+spotnum+'.jpg',newImage0)
-        
-    return (coords[0] + (cX - 100), coords[1] + (cY - 100))
+            #image = cv2.medianBlur(image,5)
+            cropped = cv2.cvtColor(cropped,cv2.COLOR_BGR2GRAY)
+            avg = np.mean(np.ravel(cropped))
+            ret,thresh = cv2.threshold(cropped,avg,255,0)
+            M = cv2.moments(thresh)
+            
+            cX = int(M["m10"]/M["m00"])
+            cY = int(M["m01"]/M["m00"])
+            
+            if (display_spots == True):
+                maxIntensity = 255.0 # depends on dtype of image data
+                x = np.arange(maxIntensity)
+                phi = .8
+                theta = 5
+                newImage0 = (maxIntensity/phi)*(cropped/(maxIntensity/theta))**0.5
+                newImage0 = np.array(newImage0,dtype=np.uint8)
+                cv2.circle(newImage0,(cX,cY),70,(0,255,0),2)
+                cv2.circle(newImage0,(cX,cY),2,(0,0,255),3)
+                cv2.imshow('detected circles',newImage0)
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
+                cv2.imwrite('spot'+spotnum+'.jpg',newImage0)
+                
+            coord_dict[str(spotnum)] = (coords[0] + (cX - 100), coords[1] + (cY - 100))
+        except:
+            checkLocalization = True
+            continue
+    if (checkLocalization):
+        print('\t\t^^Check localization^^')
+    return coord_dict
+
 
 def findScaleFactor(alignA, alignB, distance_to_compare_with):
     '''
