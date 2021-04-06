@@ -204,6 +204,8 @@ def averagesOfAllImages(displayCirclesBool=False, test_directory_name="", stat_c
 
 
 def main():
+    radius = MASK_RADIUS
+    metrics = '0100'
     while (1):
         folder_name = input('Enter directory to test, or \'quit\' to exit: ')
         if folder_name == 'quit':
@@ -218,13 +220,11 @@ def main():
                 '\n\tTo set the radius, add \'r=[distance in pixels]\' separated by a comma. Ex: \'folder,r=45,1111\'\n\tDefault radius is 60px.\n')
         # Change to true to display images with circles drawn on
         elif folder_name == "":
-            return
+            continue
         else:
             folder_name = (folder_name.replace(" ", "")).split(',')
             if len(folder_name) >= 2:
                 extra_commands = folder_name[1:]
-                radius = MASK_RADIUS
-                metrics = '0100'
                 for com in extra_commands:
                     if com[:2] == 'r=':
                         if com[2:].isnumeric():
@@ -234,8 +234,11 @@ def main():
                     else:
                         metrics = com
                 averagesOfAllImages(False, folder_name[0], metrics, int(radius))
-            else:
+            elif len(folder_name) == 1:
                 averagesOfAllImages(False, folder_name[0])
+            else:
+                print('\tFor input instructions, enter \'help\')
+                continue
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
