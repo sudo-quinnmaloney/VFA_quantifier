@@ -217,7 +217,8 @@ def main():
                 '\t\t[Std, Mean, Max, Min]\n' +
                 '\tFor example, entering \'this_folder, 1100\' ' +
                 'returns the Standard Deviation and the Mean\n\tMean (toggled with \'0100\') is taken by default.\n' +
-                '\n\tTo set the radius, add \'r=[distance in pixels]\' separated by a comma. Ex: \'folder,r=45,1111\'\n\tDefault radius is 60px.\n')
+                '\n\tTo set the radius, add \'r=[distance in pixels]\' separated by a comma. Ex: \'folder,r=45,1111\'\n\tDefault radius is 60px.\n'
+                 + '\tUpdates to radius and metric remain until they are changed or the program is terminated\n')
         # Change to true to display images with circles drawn on
         elif folder_name == "":
             continue
