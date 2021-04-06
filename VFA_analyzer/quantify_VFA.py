@@ -235,7 +235,7 @@ def main():
                         metrics = com
                 averagesOfAllImages(False, folder_name[0], metrics, int(radius))
             elif len(folder_name) == 1:
-                averagesOfAllImages(False, folder_name[0])
+                averagesOfAllImages(False, folder_name[0], metrics, int(radius))
             else:
                 print('\tFor input instructions, enter \'help\'')
                 continue
