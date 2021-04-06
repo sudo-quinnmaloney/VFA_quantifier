@@ -9,34 +9,34 @@ def localizeWithCentroid(rotatedandscaled, coord_dict, display_spots):
     checkLocalization = False
     for i in range(13):
         try:
-            spotnum = i+1
+            spotnum = i + 1
             coords = coord_dict[str(spotnum)]
-            
-            cropped = rotatedandscaled[coords[1]-100:coords[1]+100, coords[0]-100: coords[0]+100]
 
-            #image = cv2.medianBlur(image,5)
-            cropped = cv2.cvtColor(cropped,cv2.COLOR_BGR2GRAY)
+            cropped = rotatedandscaled[coords[1] - 100:coords[1] + 100, coords[0] - 100: coords[0] + 100]
+
+            # image = cv2.medianBlur(image,5)
+            cropped = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
             avg = np.mean(np.ravel(cropped))
-            ret,thresh = cv2.threshold(cropped,avg,255,0)
+            ret, thresh = cv2.threshold(cropped, avg, 255, 0)
             M = cv2.moments(thresh)
-            
-            cX = int(M["m10"]/M["m00"])
-            cY = int(M["m01"]/M["m00"])
-            
+
+            cX = int(M["m10"] / M["m00"])
+            cY = int(M["m01"] / M["m00"])
+
             if (display_spots == True):
-                maxIntensity = 255.0 # depends on dtype of image data
+                maxIntensity = 255.0  # depends on dtype of image data
                 x = np.arange(maxIntensity)
                 phi = .8
                 theta = 5
-                newImage0 = (maxIntensity/phi)*(cropped/(maxIntensity/theta))**0.5
-                newImage0 = np.array(newImage0,dtype=np.uint8)
-                cv2.circle(newImage0,(cX,cY),70,(0,255,0),2)
-                cv2.circle(newImage0,(cX,cY),2,(0,0,255),3)
-                cv2.imshow('detected circles',newImage0)
+                newImage0 = (maxIntensity / phi) * (cropped / (maxIntensity / theta)) ** 0.5
+                newImage0 = np.array(newImage0, dtype=np.uint8)
+                cv2.circle(newImage0, (cX, cY), 70, (0, 255, 0), 2)
+                cv2.circle(newImage0, (cX, cY), 2, (0, 0, 255), 3)
+                cv2.imshow('detected circles', newImage0)
                 cv2.waitKey(0)
                 cv2.destroyAllWindows()
-                cv2.imwrite('spot'+spotnum+'.jpg',newImage0)
-                
+                cv2.imwrite('spot' + spotnum + '.jpg', newImage0)
+
             coord_dict[str(spotnum)] = (coords[0] + (cX - 100), coords[1] + (cY - 100))
         except:
             checkLocalization = True
@@ -61,26 +61,20 @@ def findScaleFactor(alignA, alignB, distance_to_compare_with):
     :param distance_to_compare_with: What the distance between them SHOULD be (to create a ratio)
     :return:
     '''
-    assert(int(alignA[0]) <= int(alignB[0]))
+    assert (int(alignA[0]) <= int(alignB[0]))
     deltaX = abs(int(alignA[0]) - int(alignB[0]))
     deltaY = abs(int(alignA[1]) - int(alignB[1]))
-
 
     distance = math.sqrt(deltaX * deltaX + deltaY * deltaY)
 
     ratioToScale = distance_to_compare_with / distance
-    #print("Distance: " + str(distance))
-    #print("Ratio: " + str(ratioToScale))
-
+    # print("Distance: " + str(distance))
+    # print("Ratio: " + str(ratioToScale))
 
     return ratioToScale
 
 
-
-
-
-
-def rotateAndScale(img, scaleFactor = 1, degreesCCW = 0):
+def rotateAndScale(img, scaleFactor=1, degreesCCW=0):
     '''
     :param img: the image that will get rotated and returned
     :param scaleFactor: option to scale image
@@ -88,32 +82,28 @@ def rotateAndScale(img, scaleFactor = 1, degreesCCW = 0):
     :return: rotated image
     '''
 
+    (oldY, oldX) = (img.shape[0], img.shape[1])  # note: numpy uses (y,x) convention but most OpenCV functions use (x,y)
+    M = cv2.getRotationMatrix2D(center=(oldX / 2, oldY / 2), angle=degreesCCW,
+                                scale=scaleFactor)  # rotate about center of image.
 
-    (oldY,oldX) = (img.shape[0], img.shape[1]) #note: numpy uses (y,x) convention but most OpenCV functions use (x,y)
-    M = cv2.getRotationMatrix2D(center=(oldX/2,oldY/2), angle=degreesCCW, scale=scaleFactor) #rotate about center of image.
-
-    #choose a new image size.
-    newX,newY = oldX*scaleFactor,oldY*scaleFactor
-    #include this if you want to prevent corners being cut off
+    # choose a new image size.
+    newX, newY = oldX * scaleFactor, oldY * scaleFactor
+    # include this if you want to prevent corners being cut off
     r = np.deg2rad(degreesCCW)
-    newX,newY = (abs(np.sin(r)*newY) + abs(np.cos(r)*newX),abs(np.sin(r)*newX) + abs(np.cos(r)*newY))
+    newX, newY = (abs(np.sin(r) * newY) + abs(np.cos(r) * newX), abs(np.sin(r) * newX) + abs(np.cos(r) * newY))
 
-    #the warpAffine function call, below, basically works like this:
+    # the warpAffine function call, below, basically works like this:
     # 1. apply the M transformation on each pixel of the original image
     # 2. save everything that falls within the upper-left "dsize" portion of the resulting image.
 
-    #So I will find the translation that moves the result to the center of that region.
-    (tx,ty) = ((newX-oldX)/2,(newY-oldY)/2)
-    M[0,2] += tx #third column of matrix holds translation, which takes effect after rotation.
-    M[1,2] += ty
+    # So I will find the translation that moves the result to the center of that region.
+    (tx, ty) = ((newX - oldX) / 2, (newY - oldY) / 2)
+    M[0, 2] += tx  # third column of matrix holds translation, which takes effect after rotation.
+    M[1, 2] += ty
 
-    rotatedImg = cv2.warpAffine(img, M, dsize=(int(newX),int(newY)))
+    rotatedImg = cv2.warpAffine(img, M, dsize=(int(newX), int(newY)))
 
     return rotatedImg
-
-
-
-
 
 
 def findAngle(alignA, alignB):
@@ -140,18 +130,14 @@ def findAngle(alignA, alignB):
 
     deltaY = abs(deltaY)
 
-    angleToRotate = math.atan(deltaY/deltaX)
+    angleToRotate = math.atan(deltaY / deltaX)
 
     if direction == "CW":
-        angleToRotate = -1 * angleToRotate * (180/math.pi)
+        angleToRotate = -1 * angleToRotate * (180 / math.pi)
     else:
-        angleToRotate = angleToRotate * (180/math.pi)
+        angleToRotate = angleToRotate * (180 / math.pi)
 
     return angleToRotate
-
-
-
-
 
 
 def alignImage(image, image_name, correct_distance_from_A_to_B, correct_alignmarker_A_coordinates, template_dictionary):
@@ -184,7 +170,6 @@ def alignImage(image, image_name, correct_distance_from_A_to_B, correct_alignmar
     :return: shifted and rotated image
     '''
 
-
     ############## Preparing to rotate and scale the image
     alignA = matchTemplate(image, template_dictionary, "template_A")
     alignB = matchTemplate(image, template_dictionary, "template_B")
@@ -193,25 +178,20 @@ def alignImage(image, image_name, correct_distance_from_A_to_B, correct_alignmar
 
     angle1 = findAngle(alignA, alignB)
     angle2 = findAngle(alignC, alignD)
-    avg_angle = (angle1 + angle2)/2
+    avg_angle = (angle1 + angle2) / 2
 
     scaleFactor1 = findScaleFactor(alignA, alignB, correct_distance_from_A_to_B)
     scaleFactor2 = findScaleFactor(alignC, alignD, correct_distance_from_A_to_B)
-    avg_scale_factor = (scaleFactor1 + scaleFactor2)/2
-    #print(avg_scale_factor)
-
+    avg_scale_factor = (scaleFactor1 + scaleFactor2) / 2
+    # print(avg_scale_factor)
 
     ############## Basically used as a threshold, given that the test is inserted correctly,
     # it should never be larger than 45 degrees
     if abs(avg_angle) > 45:
         print(image_name + ' is a bad image, it was rotated ' + str(avg_angle) + ' degrees, unexpected amount')
 
-
     ########### Actually rotates image
     image = rotateAndScale(image, avg_scale_factor, avg_angle)
-
-
-
 
     ############### Shifts the image
     new_alignA = matchTemplate(image, template_dictionary, "template_A")
@@ -219,16 +199,12 @@ def alignImage(image, image_name, correct_distance_from_A_to_B, correct_alignmar
     alignAY = new_alignA[1]
     shiftBy_x = correct_alignmarker_A_coordinates[0] - alignAX
     shiftBy_y = correct_alignmarker_A_coordinates[1] - alignAY
-    
+
     num_rows, num_cols = image.shape[:2]
-    translation_matrix = np.float32([ [1,0,shiftBy_x], [0,1,shiftBy_y] ])
+    translation_matrix = np.float32([[1, 0, shiftBy_x], [0, 1, shiftBy_y]])
     image = cv2.warpAffine(image, translation_matrix, (num_cols, num_rows))
 
     return image
-
-
-
-
 
 
 def matchTemplate(image, template_dictionary, template):
@@ -243,39 +219,29 @@ def matchTemplate(image, template_dictionary, template):
     :return:
     '''
 
-
-
-
     if template == 'template_A' or template == 'template_C':
         partition = 'A'
     else:
         partition = 'B'
 
-
     # Reads the template image from the alignment_templates directory
     template = cv2.imread('alignment templates/' + template_dictionary[template], cv2.IMREAD_GRAYSCALE)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-
-
     ######### Partitioning of image
     gray_width, gray_height = image.shape[::-1]
-    gray_half_width = gray_width//2 #Note the double '/' for making sure our result is an integer
+    gray_half_width = gray_width // 2  # Note the double '/' for making sure our result is an integer
 
     if partition == 'B':
         # We are going to look at the right partition
-        image = image[0:gray_height,gray_half_width:gray_width]
+        image = image[0:gray_height, gray_half_width:gray_width]
     elif partition == 'A':
         # We are going to look at the left partition
         image = image[0:gray_height, 0:gray_half_width]
 
-
-
-
     ########## Actually completing template match
-    w,h = template.shape[::-1]
+    w, h = template.shape[::-1]
     result = cv2.matchTemplate(image, template, cv2.TM_CCOEFF_NORMED)
-
 
     ##########This section calculates the midpoint of the square that the template matched to
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
@@ -283,12 +249,11 @@ def matchTemplate(image, template_dictionary, template):
     bottom_right = (top_left[0] + w, top_left[1] + h)
     deltaX = bottom_right[0] - top_left[0]
     deltaY = bottom_right[1] - top_left[1]
-    midXPoint = top_left[0] + deltaX//2
-    midYPoint = top_left[1] + deltaY//2
+    midXPoint = top_left[0] + deltaX // 2
+    midYPoint = top_left[1] + deltaY // 2
 
-
-    #We run this if we were looking at the right side of the image
-    #This is because the midpoint for X would be relative to the cropped image we fed into the template matcher
+    # We run this if we were looking at the right side of the image
+    # This is because the midpoint for X would be relative to the cropped image we fed into the template matcher
     # However, we have to add 1225 (or whatever half the width of gray_image is) back to get the
     # x value with respect to the entire image
     if partition == 'B':
@@ -296,30 +261,38 @@ def matchTemplate(image, template_dictionary, template):
 
     return (midXPoint, midYPoint)
 
-def getStats(image, r, center, command, visualize):
-    x, y = center[0], center[1]
-    thisSpot = [image[y][x]]
-    removed = 0
+def generateMask(r):
+    x, y = r, r
+    mask = np.ones((2*r,2*r))
     for xs in range(r):
         for ys in range(r):
-            if (0 < xs**2 + ys**2 < r**2):
-                thisSpot.append(image[y + ys][x + xs])
-                thisSpot.append(image[y - ys][x - xs])
-                thisSpot.append(image[y + ys][x - xs])
-                thisSpot.append(image[y - ys][x + xs])
-                if (visualize):
-                    image[y+ys][x+xs] = 255
-                    image[y-ys][x+xs] = 255
-                    image[y+ys][x-xs] = 255
-                    image[y-ys][x-xs] = 255
+            if (0 < xs ** 2 + ys ** 2 < r ** 2):
+                mask[y + ys][x + xs] = 0
+                mask[y - ys][x - xs] = 0
+                mask[y + ys][x - xs] = 0
+                mask[y - ys][x + xs] = 0
+    return mask
+
+def getStats(image, r, center, commands, visualize, thisMask):
+    x, y = center[0], center[1]
+    thisSpot = np.array(image)[y-r:y+r, x-r:x+r]
     if (visualize):
+        for xs in range(r):
+            for ys in range(r):
+                if (0 < xs ** 2 + ys ** 2 < r ** 2):
+                    image[y + ys][x + xs] = 255
+                    image[y - ys][x + xs] = 255
+                    image[y + ys][x - xs] = 255
+                    image[y - ys][x - xs] = 255
         cv2.imshow('spot mask', image)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
-        
-    options = { 0: np.std , 1: np.mean, 2: max, 3: min }
-    #options = [np.std(thisSpot), np.mean(thisSpot), max(thisSpot), min(thisSpot)]
-    return options[command](thisSpot)
+
+    thisSpot = (np.ma.array(thisSpot, mask=thisMask)).compressed()
+    options = [np.std, np.mean, np.amax, np.amin]
+    result = [options[c](thisSpot) for c in range(len(commands)) if commands[c] != 0]
+    return result
+
 
 def drawCirclesAndLabels(already_aligned_image, pointMap, radius_to_draw):
     '''
@@ -335,7 +308,6 @@ def drawCirclesAndLabels(already_aligned_image, pointMap, radius_to_draw):
     # in order to not modify the version passed in, we make a deep copy
     copyImage = copy.deepcopy(already_aligned_image)
 
-
     ##NOTE:
     ##'key' is the name of the circle/alignment marker
     ##'value' is the coordinate of its respective circle/alignment marker
@@ -346,10 +318,9 @@ def drawCirclesAndLabels(already_aligned_image, pointMap, radius_to_draw):
         color = (255, 255, 255)
         thickness = 2
 
-        if key not in ['A','B','C','D']:
-
+        if key not in ['A', 'B', 'C', 'D']:
             cv2.circle(copyImage, value, radius_to_draw, color, thickness)
 
         copyImage = cv2.putText(copyImage, key, value, font,
-                            fontScale, color, thickness, cv2.LINE_AA)
+                                fontScale, color, thickness, cv2.LINE_AA)
     return copyImage
