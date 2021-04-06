@@ -1,11 +1,14 @@
-Uses fluorescent_jpg.py to circle immunoreaction spots and find pixel averages.
+Uses quantify_VFA.py to circle immunoreaction spots and find pixel averages, standard means, minima, and maxima
 
-To scan images in N folders titled 'name_of_folders n' for 0<n<=N:
-    -SET VARIABLES 'name' and 'folders' in averagesOfAllImages on lines 409 and 410, respectively.
-    -THEN SET imageList parameters i and c in line 413, shown here -->  and ''.join(f[i]) == 'c' <-- where i is the index of the character c in each image name. For example, if all images being scanned are labeled xxx-xxxx-xxx i and c could be 3 and '-', or 8 and '-'.
-    -Circled images and .csv's are stored in child directories.
+To use:
+    -The script will wait for user input. Enter a the name of a folder within the script's parent directory.
+    -In addition to the folder name, parameters can be given when separated by a comma. These include:
+        -Toggle desired metrics in the form of a binary number. Type enter 'help' in the script for more details.
+        -Set desired radius of analysis
+    -Alternatively, call the script using " python3 quantify_VFA.py <<< $'example_folder,1111,r=49\n' " to skip manual input
+    -Notated images and .csv's are stored in sibling folders.
     
 Change template
     -Template aligner images are stored in a directory named 'alignment_templates/'.
-    -Spot locations are stored in the 'spots' array of findAllCircleAveragesFor (the first four are alignment markers).
-    -Change circle radius in the 'radius_of_mask' integer in findAllCircleAveragesFor.
+    -Spot locations are stored in the global 'pointMap' dictionary of quantify_VFA.py (the first four are alignment markers).
+    -NUM_SPOTS should be changed to match current VFA designs
