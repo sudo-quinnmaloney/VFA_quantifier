@@ -237,7 +237,7 @@ def main():
             elif len(folder_name) == 1:
                 averagesOfAllImages(False, folder_name[0])
             else:
-                print('\tFor input instructions, enter \'help\')
+                print('\tFor input instructions, enter \'help\'')
                 continue
         cv2.waitKey(0)
         cv2.destroyAllWindows()
