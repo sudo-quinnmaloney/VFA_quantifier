@@ -179,14 +179,15 @@ def averagesOfAllImages(displayCirclesBool=False, test_directory_name="", stat_c
 
     start = time.time()
     ##### Writes data acquired from list to our csv file
+    thisMask = generateMask(r)
     i = 0
     matrix = np.ones((NUM_SPOTS+1, NUM_STATS - stat_commands.count(0)))
     for image in imageList:
         if i == 0:
-            matrix = [getCircleData(test_directory_path, image, displayCirclesBool, stat_commands, r, generateMask(r))]
+            matrix = [getCircleData(test_directory_path, image, displayCirclesBool, stat_commands, r, thisMask)]
             i += 1
             continue
-        matrix = matrix + [getCircleData(test_directory_path, image, displayCirclesBool, stat_commands, r, generateMask(r))]
+        matrix = matrix + [getCircleData(test_directory_path, image, displayCirclesBool, stat_commands, r, thisMask)]
         i += 1
     if not isdir(test_directory_path + 'csv/'):
         mkdir(test_directory_path + 'csv/')
