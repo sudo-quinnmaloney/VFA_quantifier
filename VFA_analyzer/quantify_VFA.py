@@ -14,8 +14,8 @@ command_dict = {0: 'std', 1: 'mean', 2: 'max', 3: 'min'}
 
 #### THIS PART IS ESSENTIAL, THIS IS OUR SPOT MAP THAT OUR ENTIRE PROGRAM IS BASED ON
 pointMapInit = {
-    'A': (1092+95, 1564+95),
-    'B': (2540+95, 1577+95),
+    'A': (1084+100, 1561+100),
+    'B': (2531+100, 1579+100),
     'C': (1082+95, 3019+95),
     'D': (2538+95, 3035+95),
     '1': (1424, 1856),
@@ -44,8 +44,8 @@ NUM_STATS = len(command_dict)
 # the template, dont change the keys of this dictionary
 # e.g. Do not change 'template_A'
 template_dictionary = {
-    'template_A': 'alignment_A_CPN.jpg',
-    'template_B': 'alignment_B_CPN.jpg',
+    'template_A': 'alignment_A_CPN_old.jpg',
+    'template_B': 'alignment_B_CPN_old.jpg',
     'template_C': 'alignment_C_CPN.jpg',
     'template_D': 'alignment_D_CPN.jpg'
 }
@@ -81,7 +81,6 @@ def getCircleData(imagePath, image_name, displayCirclesBool, whichCommands, r):
     # This output array will be returned and will be a row in the csv file
     output = []
     output.append([image_name for i in range(NUM_STATS - whichCommands.count(0))])
-
     # Import (and convert from DNG if necessary)
     full_image_path = imagePath + image_name
 
@@ -93,11 +92,11 @@ def getCircleData(imagePath, image_name, displayCirclesBool, whichCommands, r):
 
     # Crop and align
     image = image[YMIN_BOUND: YMAX_BOUND, XMIN_BOUND: XMAX_BOUND]
-    aligned_image = alignImage(image, image_name, DISTANCE_FROM_A_TO_B, ALIGNMENT_MARKER_A_MAP_LOCATION,
+    aligned_image, error_flag = alignImage(image, image_name, DISTANCE_FROM_A_TO_B, ALIGNMENT_MARKER_A_MAP_LOCATION,
                                template_dictionary)
 
     # Improve localization
-    pointMap = localizeWithCentroid(aligned_image, pointMapInit, False)
+    pointMap, error_flag = localizeWithCentroid(aligned_image, pointMapInit, False, error_flag)
 
     ## Grayscale the image to begin masking process
     #  aligned_image = cv2.cvtColor(aligned_image, cv2.COLOR_BGR2GRAY)
@@ -112,7 +111,6 @@ def getCircleData(imagePath, image_name, displayCirclesBool, whichCommands, r):
 
             # averageIntensity = findAverageLightIntensity(maskedImage, mask)
             output.append(getStats(red_channel, r, value, whichCommands, False))
-
     # Display or save
     image_name = image_name.split('.')[0]
     if displayCirclesBool == True:
@@ -127,6 +125,7 @@ def getCircleData(imagePath, image_name, displayCirclesBool, whichCommands, r):
 
     # Prints the path for the image that was just processed
     print("\tFinished Processing: " + full_image_path)
+    output.append([error_flag for i in range(NUM_STATS - whichCommands.count(0))])
     return output
 
 
@@ -180,7 +179,7 @@ def averagesOfAllImages(displayCirclesBool=False, test_directory_name="", stat_c
     start = time.time()
     ##### Writes data acquired from list to our csv file
     i = 0
-    matrix = np.ones((NUM_SPOTS+1, NUM_STATS - stat_commands.count(0)))
+    matrix = np.ones((NUM_SPOTS+2, NUM_STATS - stat_commands.count(0)))
     generateMask(r)
 
     for image in imageList:
@@ -188,19 +187,21 @@ def averagesOfAllImages(displayCirclesBool=False, test_directory_name="", stat_c
             matrix = [getCircleData(test_directory_path, image, displayCirclesBool, stat_commands, r)]
             i += 1
             continue
-        matrix = matrix + [getCircleData(test_directory_path, image, displayCirclesBool, stat_commands, r)]
+        matrix += [getCircleData(test_directory_path, image, displayCirclesBool, stat_commands, r)]
         i += 1
     if not isdir(test_directory_path + 'csv/'):
         mkdir(test_directory_path + 'csv/')
     j = 0
+
     matrix = np.asarray(matrix)
+
     for s in range(NUM_STATS):
         if stat_commands[s] != 0:
             with open(test_directory_path + 'csv/' + command_dict[s] + '_r=' + str(r) + '.csv', 'w+', newline='') as f:
-                thisMatrix = np.vstack([range(NUM_SPOTS + 1), matrix[:, :, j]])
+                thisMatrix = np.vstack([np.append(np.arange(NUM_SPOTS + 1), 'Error Flag'), matrix[:, :, j]])
                 writer = csv.writer(f, delimiter=';')
                 writer.writerows(thisMatrix)
-            j+=1
+            j += 1
     end = time.time()
     print('Average runtime: ' + str((end - start) / len(imageList)))
 
