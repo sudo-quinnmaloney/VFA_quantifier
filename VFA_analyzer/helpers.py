@@ -6,7 +6,7 @@ MARGIN = 90
 MASK = np.ones((1, 1))
 
 
-def localizeWithCentroid(rotatedandscaled, coord_dict, display_spots):
+def localizeWithCentroid(rotatedandscaled, coord_dict, display_spots, error):
     '''This function detects the actual center of a given spot by calculating the centroid of the pixel intensities. Then it updates the pointmap. This is much more effective than the Hough transform approach, but a bit slower.'''
     checkLocalization = False
     output_dict = {}
@@ -49,7 +49,7 @@ def localizeWithCentroid(rotatedandscaled, coord_dict, display_spots):
             continue
     if (checkLocalization):
         print('\t\t^^Check localization^^')
-    return output_dict
+    return output_dict, (checkLocalization | error)
 
 
 def findScaleFactor(alignA, alignB, distance_to_compare_with):
@@ -146,7 +146,7 @@ def findAngle(alignA, alignB):
     return angleToRotate
 
 
-def alignImage(image, image_name, correct_distance_from_A_to_B, correct_alignmarker_A_coordinates, template_dictionary):
+def alignImage(image, image_name, correct_distance_from_A_to_B, correct_alignmarker_A_coordinates, template_dictionary, error = False):
     '''
     This function combines the shiftBy function and the rotateImage function into one.
     Essentially places our image on our predetermined grid. First it rotates the image (using avg angle between A-B & C-D),
@@ -184,17 +184,19 @@ def alignImage(image, image_name, correct_distance_from_A_to_B, correct_alignmar
 
     angle1 = findAngle(alignA, alignB)
     angle2 = findAngle(alignC, alignD)
-    avg_angle = (angle1 + angle2) / 2
-
-    scaleFactor1 = findScaleFactor(alignA, alignB, correct_distance_from_A_to_B)
-    scaleFactor2 = findScaleFactor(alignC, alignD, correct_distance_from_A_to_B)
-    avg_scale_factor = (scaleFactor1 + scaleFactor2) / 2
-    # print(avg_scale_factor)
-
-    ############## Basically used as a threshold, given that the test is inserted correctly,
-    # it should never be larger than 45 degrees
-    if abs(avg_angle) > 45:
-        print(image_name + ' is a bad image, it was rotated ' + str(avg_angle) + ' degrees, unexpected amount')
+    if abs(angle1) > 30 or abs(angle2) > 30:
+        print('\t--Difficult alignment for {}--'.format(image_name))
+        error = True
+        fallback = np.argmin([abs(angle1), abs(angle2)])
+        avg_angle = [angle1, angle2][fallback]
+        avg_scale_factor = findScaleFactor(alignA, alignB, correct_distance_from_A_to_B) if not fallback \
+            else findScaleFactor(alignC, alignD, correct_distance_from_A_to_B)
+    else:
+        avg_angle = (angle1 + angle2) / 2
+        scaleFactor1 = findScaleFactor(alignA, alignB, correct_distance_from_A_to_B)
+        scaleFactor2 = findScaleFactor(alignC, alignD, correct_distance_from_A_to_B)
+        avg_scale_factor = (scaleFactor1 + scaleFactor2) / 2
+        # print(avg_scale_factor)
 
     ########### Actually rotates image
     image = rotateAndScale(image, avg_scale_factor, avg_angle)
@@ -210,7 +212,7 @@ def alignImage(image, image_name, correct_distance_from_A_to_B, correct_alignmar
     translation_matrix = np.float32([[1, 0, shiftBy_x], [0, 1, shiftBy_y]])
     image = cv2.warpAffine(image, translation_matrix, (num_cols, num_rows))
 
-    return image
+    return image, error
 
 
 def matchTemplate(image, template_dictionary, template):
