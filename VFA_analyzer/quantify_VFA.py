@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import csv
 import time
-from helper_thresh import drawCirclesAndLabels, \
+from helpers import drawCirclesAndLabels, \
     alignImage, localizeWithCentroid, getStats, generateMask
 
 # This is for reading the images that are in the fluorescent/ directory
