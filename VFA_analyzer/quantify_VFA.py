@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import csv
 import time
-from helpers import drawCirclesAndLabels, \
+from helper_thresh import drawCirclesAndLabels, \
     alignImage, localizeWithCentroid, getStats, generateMask
 
 # This is for reading the images that are in the fluorescent/ directory
@@ -62,6 +62,11 @@ YMAX_BOUND = 4200
 XMIN_BOUND = 200
 XMAX_BOUND = 3800
 
+THRESH1 = 3 #Acceptable margin for the first filter (in multiples of the standard deviation)
+THRESH2_UPPER = 1 #All pixels lower than THRESH2_UPPER*max_in_spot are kept
+THRESH2_LOWER = 0.5 #All pixels greater than THRESH2_LOWER*max_in_spot are kept
+THRESH = [THRESH1, THRESH2_UPPER, THRESH2_LOWER]
+show_mask = 0
 
 def getCircleData(imagePath, image_name, displayCirclesBool, whichCommands, r):
     '''
@@ -110,7 +115,7 @@ def getCircleData(imagePath, image_name, displayCirclesBool, whichCommands, r):
             # maskedImage = np.multiply(aligned_image, mask)
 
             # averageIntensity = findAverageLightIntensity(maskedImage, mask)
-            output.append(getStats(red_channel, r, value, whichCommands, False))
+            output.append(getStats(red_channel, r, value, whichCommands, show_mask, THRESH))
     # Display or save
     image_name = image_name.split('.')[0]
     if displayCirclesBool == True:
@@ -207,8 +212,9 @@ def averagesOfAllImages(displayCirclesBool=False, test_directory_name="", stat_c
 
 
 def main():
+    global show_mask
     while (1):
-        folder_name = input('Enter directory to test, or \'quit\' to exit: ')
+        folder_name = input('Enter directory to test, \'quit\' to exit, \'help\' for more info: ')
         if folder_name == 'quit':
             return
         elif folder_name == 'help':
@@ -217,8 +223,9 @@ def main():
                 '(separated by a comma) corresponding to\n' +
                 '\t\t[Std, Mean, Max, Min]\n' +
                 '\tFor example, entering \'this_folder, 1100\' ' +
-                'returns the Standard Deviation and the Mean\n\tMean is taken by default (\'0100\').\n' +
-                'To set the radius, type \'r=[your value here]\' separated by a comma. Ex: \'folder,r=45,1111\'\n\tDefault radius is 60px.\n')
+                'returns the Standard Deviation and the Mean.\n\tMean is taken by default (\'0100\').\n' +
+                '\tTo set the radius, type \'r=[your value here]\' separated by a comma. Ex: \'folder,r=45,1111\'.\n\tThe default radius is 60px.\n' +
+                '\tTo display spot masks as they\'re generated, type \'mask=1\'. Turn it off with \'mask=0\'.')
         # Change to true to display images with circles drawn on
         else:
             folder_name = (folder_name.replace(" ", "")).split(',')
@@ -231,9 +238,16 @@ def main():
                         if com[2:].isnumeric():
                             radius = int(com[2:])
                         else:
-                            print('\tInvalid radius...')
-                    else:
+                            print('\tInvalid radius. Type \'help\'')
+                    elif com[:5] == 'mask=':
+                        if com[5].isnumeric() and len(com)==6:
+                            show_mask = int(com[5])
+                        else:
+                            print('\tInvalid mask setting. Type \'help\'')
+                    elif com.isnumeric():
                         metrics = com
+                    else:
+                        print('\tInvalid setting input. Type \'help\'')
                 averagesOfAllImages(False, folder_name[0], metrics, int(radius))
             else:
                 averagesOfAllImages(False, folder_name[0])
