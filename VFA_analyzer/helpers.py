@@ -3,7 +3,7 @@ import numpy as np
 import math
 
 MARGIN = 90
-MASK = np.ones((1, 1))
+MASK = np.zeros((1, 1))
 
 
 def localizeWithCentroid(rotatedandscaled, coord_dict, display_spots, error):
@@ -282,22 +282,22 @@ def generateMask(r):
                 MASK[y - ys][x + xs] = 0
     return MASK
 
-def getStats(image, r, center, commands, visualize):
+def getStats(image, r, center, commands, visualize, threshold):
     x, y = center[0], center[1]
     thisSpot = np.array(image)[y-r:y+r, x-r:x+r]
+    thisSpot = np.ma.array(thisSpot, mask=MASK)
+    ravelled = thisSpot.compressed()
+    refStd, refMean, refMax = np.std(ravelled), np.mean(ravelled), max(ravelled)
+    thisSpot = np.ma.masked_outside(thisSpot, refMean - threshold[0] * refStd, refMean + threshold[0] * refStd)
+    refMax = max(thisSpot.compressed())
+    thisSpot = np.ma.masked_greater(thisSpot, threshold[1] * refMax)
+    thisSpot = np.ma.masked_less(thisSpot, threshold[2] * refMax)
     if (visualize):
-        for xs in range(r):
-            for ys in range(r):
-                if (0 < xs ** 2 + ys ** 2 < r ** 2):
-                    image[y + ys][x + xs] = 255
-                    image[y - ys][x + xs] = 255
-                    image[y + ys][x - xs] = 255
-                    image[y - ys][x - xs] = 255
-        cv2.imshow('spot mask', image)
+        to_show = np.concatenate((thisSpot.filled(255), image[y-r:y+r, x-r:x+r]), axis=1)
+        cv2.imshow('spot mask vs original', to_show)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
-
-    thisSpot = (np.ma.array(thisSpot, mask=MASK)).compressed()
+    thisSpot = thisSpot.compressed()
     options = [np.std, np.mean, np.amax, np.amin]
     result = [options[c](thisSpot) for c in range(len(commands)) if commands[c] != 0]
     return result
