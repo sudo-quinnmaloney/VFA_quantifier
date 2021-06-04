@@ -273,6 +273,7 @@ def generateMask(r):
     global MASK
     x, y = r, r
     MASK = np.ones((2*r,2*r))
+    MASK[y][x] = 0
     for xs in range(r):
         for ys in range(r):
             if (0 < xs ** 2 + ys ** 2 < r ** 2):
